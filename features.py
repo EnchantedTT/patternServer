@@ -1,16 +1,18 @@
 from nltk.corpus import cmudict
 from pattern.en import parse, parsetree, wordnet, NOUN
 
-def getArticleFeatures(pss, ss):
+def getArticleFeatures(parsedSents, sentences):
 	errors = []
 	features = []
 	headList = []
 	count = -1	
-	for i in range(len(pss)):
-		if pss[i] == None:
+	for i in range(len(parsedSents)):
+		if parsedSents[i] == None:
 			continue
-		s = pss[i]
-		print s
+		s = parsedSents[i]
 		sHeads = []
 		for chunk in s.chunks:
 			print chunk
+
+def getCountsFeatures(parsedSents, sentences):
+	pass

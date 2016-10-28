@@ -39,7 +39,7 @@ def getCounts():
 	try:
 		value = data['text']
 		pss, ss = parseSentence(value)
-		print len(pss), len(ss)
+		features.getCountsFeatures(pss, ss)
 	except(KeyError, TypeError, ValueError):
 		raise JsonError(description='Invalid value.')
 	return jsonify(result)
