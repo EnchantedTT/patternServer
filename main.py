@@ -12,6 +12,7 @@ FlaskJSON(app)
 pool = redis.ConnectionPool(host='0.0.0.0', port=6379)
 sentCache = redis.Redis(connection_pool=pool)
 
+#parse sentence with pattern, get parsed sentences in cache if not None
 def parseSentence(data):
 	data = json.dumps(data, indent=4)
 	sentences = json.loads(data)
@@ -28,7 +29,7 @@ def parseSentence(data):
 				s = s[0]
 				if s.stop != len(sent):
 					s = None
-			sentCache.set(text, repr(s), ex=3)
+			sentCache.set(text, repr(s), ex=300)
 			parsedSents.append(s)
 	return parsedSents, sentences
 
@@ -39,7 +40,9 @@ def getCounts():
 	try:
 		value = data['text']
 		pss, ss = parseSentence(value)
-		features.getCountsFeatures(pss, ss)
+		errors, fs = features.getCountsFeatures(pss, ss)
+		result['errors'] = errors
+		result['features'] = fs
 	except(KeyError, TypeError, ValueError):
 		raise JsonError(description='Invalid value.')
 	return jsonify(result)
@@ -51,7 +54,9 @@ def getArticle():
 	try:
 		value = data['text']
 		pss, ss = parseSentence(value)
-		features.getArticleFeatures(pss, ss)
+		errors, fs = features.getArticleFeatures(pss, ss)
+		result['errors'] = errors
+		result['features'] = fs
 	except(KeyError, TypeError, ValueError):
 		raise JsonError(description='Invalid value.')
 	return jsonify(result)

@@ -189,3 +189,63 @@ def prepModify(chunk):
 			return word.type, word.string
 		else:
 			return 'NA', 'NA'
+
+def getChunkFeatures(chunk):
+	relation = chunk.role
+	if relation == None:
+		relation = "NA"
+	pdt = "N"
+	prp = "N"
+	adj = "NA"
+	adj_grade = "NA"
+	for w in chunk.words:
+		if w.type == 'JJ':
+			adj = w.lemma
+			adj_grade = 'N'
+		elif w.type == 'JJR':
+			adj = w.lemma
+			adj_grade = 'C'
+		elif w.type == 'JJS':
+			adj = w.lemma
+			adj_grade = 'S'
+		elif w.type == 'PDT':
+			pdt = "Y"
+		elif w.type == 'PRP$':
+			prp = "Y"
+		else: pass
+	return adj, adj_grade, pdt, prp, relation
+
+def getCount(noun):
+	if noun.type.startswith('NNS') or noun.type.startswith('NNPS'):
+		return 'P'
+	else: return 'S'
+
+def getRef(lists, head, sHeads):
+	flag = "N"
+	w = head.string.lower()
+	if w in sHeads:
+		flag = "Y"
+	for l in lists:
+		if w in sHeads:
+			flag = "Y"
+	return flag
+
+def isVowel(chunk, article):
+	word = None
+	if article == None:
+		word = chunk.words[0]
+	else:
+		if article.index + 1 - chunk.start > 0 and article.index + 1 - chunk.start < len(chunk.words):
+			word = chunk.words[article.index + 1 - chunk.start]
+		else:
+			word = chunk.words[1]
+	first_letter = ""
+	if PRON.has_key(word.string.lower()):
+		bef_pron = PRON[word.string.lower()]
+		first_letter = bef_pron[0][0][0]
+	else:
+		return 0
+	if first_letter in AEIOU:
+		return 1
+	else:
+		return 0
