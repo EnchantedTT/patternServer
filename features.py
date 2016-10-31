@@ -2,6 +2,27 @@ from nltk.corpus import cmudict
 from pattern.en import parse, parsetree, wordnet, NOUN
 import utils
 
+def getCountsFeatures(parsedSents, sentences):
+	for i in range(len(parsedSents)):
+		if parsedSents[i] == None:
+			continue
+		s = parsedSents[i]
+		sent = sentences[i]
+		for chunk in s.chunks:
+			if chunk.type == 'NP':
+				head = utils.getHeadFeatures(chunk)
+				if chunk.head.type == 'PRP' or head == None:
+					continue #ignore PRP and None
+				#get celex features
+				c_list = utils.getCelex(head)
+				print c_list
+				if c_list == None:
+					continue
+				#apply some precheck rules
+				error = utils.precheckCount(c_list, head, sent)
+				if error != None:
+					print error.newSent. error.original
+
 def getArticleFeatures(parsedSents, sentences):
 	errors = []
 	features = []
@@ -20,7 +41,7 @@ def getArticleFeatures(parsedSents, sentences):
 
 				#get NP article
 				article, s_article = utils.getArticle(chunk)
-				if s_article == 'O':  
+				if s_article == 'O':
 					continue #ignore DT which is not a, an or the
 
 				#precheck a/an singular and plural of this NP
@@ -94,6 +115,3 @@ def getArticleFeatures(parsedSents, sentences):
 		if len(headList) > 5:
 			del headList[0]
 	return errors, features
-
-def getCountsFeatures(parsedSents, sentences):
-	pass

@@ -29,7 +29,7 @@ def parseSentence(data):
 				s = s[0]
 				if s.stop != len(sent):
 					s = None
-			sentCache.set(text, repr(s), ex=300)
+			sentCache.set(text, repr(s), ex=3)
 			parsedSents.append(s)
 	return parsedSents, sentences
 
@@ -40,9 +40,9 @@ def getCounts():
 	try:
 		value = data['text']
 		pss, ss = parseSentence(value)
-		errors, fs = features.getCountsFeatures(pss, ss)
-		result['errors'] = errors
-		result['features'] = fs
+		features.getCountsFeatures(pss, ss)
+		#result['errors'] = errors
+		#result['features'] = fs
 	except(KeyError, TypeError, ValueError):
 		raise JsonError(description='Invalid value.')
 	return jsonify(result)

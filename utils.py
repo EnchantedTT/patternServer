@@ -1,5 +1,5 @@
 from nltk.corpus import cmudict
-from pattern.en import parse, parsetree, wordnet, NOUN
+from pattern.en import parse, parsetree, wordnet, NOUN, pluralize
 from BasicModels import Error
 
 PRON = cmudict.dict()
@@ -27,17 +27,51 @@ def readNounList(fileName):
 			maps[key] = data[1:]
 	return maps
 
+'''
+Features of noun from CELEX
+0.   C_N 		is this lemma a count noun?
+1.   Unc_N 		is this lemma an uncountable noun?
+2.   Sing_N 	does this lemma only ever occur in the singular form?
+3.   Plu_N		does this lemma ever occur in a plural-only form?
+4.   GrC_N 		is this lemma a collective noun that has a singular and a plural form?
+5.   GrUnc_N 	Is this lemma a collective noun that only has a singular form, and not a plural form?
+6.   Attr_N 	can this lemma be used attributively?
+7.   PostPos_N 	can this lemma ever be used in a postpositive way?
+8.   Voc_N 		is this lemma used to address people or things?
+9.   Proper_N 	is this lemma used as a proper noun?
+10.  Exp_N 		is this noun lemma only ever used in combination with certain other words to make up a particular phrase?
+'''
 NOUNLIST = "static/NounMap.list"
 maps = readNounList(NOUNLIST)
 NER_VALUE = ['N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'Y', 'N']
 NA_VALUE = ['N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N']
 def getCountable(head):
-	if maps.has_key(head.lemma):
-		return maps[head.lemma][2:]
-	elif '-' in head.type:
-		return NER_VALUE
+	if head.type.startswith('NNP') and ('-' in head.type):
+		if maps.has_key(head.string):
+			return maps[head.string][2:]
+		elif maps.has_key(head.lemma):
+			return maps[head.lemma][2:]
+		else:
+			return NER_VALUE
 	else:
-		return NA_VALUE
+		if maps.has_key(head.lemma):
+			return maps[head.lemma][2:]
+		else:
+			return NA_VALUE
+
+def getCelex(head):
+	if head.type.startswith('NNP') and ('-' in head.type):
+		if maps.has_key(head.string):
+			return maps[head.string][2:]
+		elif maps.has_key(head.lemma):
+			return maps[head.lemma][2:]
+		else:
+			return None
+	else:
+		if maps.has_key(head.lemma):
+			return maps[head.lemma][2:]
+		else:
+			return None
 
 #get NP head noun
 def getHeadFeatures(chunk):
@@ -63,58 +97,6 @@ def getArticle(chunk):
 	else:
 		s_article = 'O'
 	return article, s_article
-
-#precheck some errors
-def precheckArticle(article, sent, head, chunk):
-	if article == None:
-		return None
-	an = article.string.lower()
-	if an != 'an' and an != 'a':
-		return None
-	if head.type.startswith('NNP') or chunk.string.lower().find('few') != -1 or chunk.string.lower().find('many') != -1:
-		return None
-	index = article.index
-	if index > len(sent) - 2: #make sure DT is not the last token in this sentence
-		return None
-
-	first_letter = ""
-	bef = sent[index + 1]['w'].lower()	
-	if PRON.has_key(bef):
-		bef_pron = PRON[bef]
-		first_letter = bef_pron[0][0][0]
-	else: return None
-
-	start = sent[index]['b']
-	end = sent[head.index]['e']
-
-	er = None
-	if first_letter not in AEIOU and an == 'an':
-		if head.type.startswith('NNS'):
-			output = ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
-			er = Error(start, end, output, 'remove \"an\" or change \"an\" to \"the\"', 'ARTICLE_AN_FOR_PLURAL')
-		else:
-			output = 'a ' + ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
-			er = Error(start, end, output, 'chang \"an\" to \"a\"', 'ARTICLE_AN_ERROR')
-	elif first_letter in AEIOU and an == 'a':
-		if head.type.startswith('NNS'):
-			output = ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
-			er = Error(start, end, output, 'remove \"a\" or change \"a\" to \"the\"', 'ARTICLE_A_FOR_PLURAL')
-		else:
-			output = 'an' + ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
-			er = Error(start, end, output, 'chang \"a\" to \"an\"', 'ARTICLE_A_ERROR')
-	elif head.type.startswith('NNS'):
-		output = ' '.join([w['w'] for w in sent[(index):(head.index)]]) + ' ' + head.lemma
-		if an == 'an':
-			er = Error(start, end, output, 'chang plural to singular or remove \"an\"', 'ARTICLE_AN_FOR_PLURAL')
-		else:
-			er = Error(start, end, output, 'chang plural to singular or remove \"a\"', 'ARTICLE_A_FOR_PLURAL')
-	else: er = None
-
-	#if not None, set original sentence and new sentence for language model check
-	if er != None:
-		er.set_original(" ".join([w['w'] for w in sent]))
-		er.set_newSent(getNewSent(sent,er.output, chunk))
-		return er
 
 #get new sentence after precheck article
 def getNewSent(sent, output, chunk):
@@ -249,3 +231,88 @@ def isVowel(chunk, article):
 		return 1
 	else:
 		return 0
+
+#precheck some errors
+def precheckArticle(article, sent, head, chunk):
+	if article == None:
+		return None
+	an = article.string.lower()
+	if an != 'an' and an != 'a':
+		return None
+	if head.type.startswith('NNP') or chunk.string.lower().find('few') != -1 or chunk.string.lower().find('many') != -1:
+		return None
+	index = article.index
+	if index > len(sent) - 2: #make sure DT is not the last token in this sentence
+		return None
+
+	first_letter = ""
+	bef = sent[index + 1]['w'].lower()	
+	if PRON.has_key(bef):
+		bef_pron = PRON[bef]
+		first_letter = bef_pron[0][0][0]
+	else: return None
+
+	start = sent[index]['b']
+	end = sent[head.index]['e']
+
+	er = None
+	if first_letter not in AEIOU and an == 'an':
+		if head.type.startswith('NNS'):
+			output = ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
+			er = Error(start, end, output, 'remove \"an\" or change \"an\" to \"the\"', 'ARTICLE_AN_FOR_PLURAL')
+		else:
+			output = 'a ' + ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
+			er = Error(start, end, output, 'chang \"an\" to \"a\"', 'ARTICLE_AN_ERROR')
+	elif first_letter in AEIOU and an == 'a':
+		if head.type.startswith('NNS'):
+			output = ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
+			er = Error(start, end, output, 'remove \"a\" or change \"a\" to \"the\"', 'ARTICLE_A_FOR_PLURAL')
+		else:
+			output = 'an' + ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
+			er = Error(start, end, output, 'chang \"a\" to \"an\"', 'ARTICLE_A_ERROR')
+	elif head.type.startswith('NNS'):
+		output = ' '.join([w['w'] for w in sent[(index):(head.index)]]) + ' ' + head.lemma
+		if an == 'an':
+			er = Error(start, end, output, 'chang plural to singular or remove \"an\"', 'ARTICLE_AN_FOR_PLURAL')
+		else:
+			er = Error(start, end, output, 'chang plural to singular or remove \"a\"', 'ARTICLE_A_FOR_PLURAL')
+	else: er = None
+
+	#if not None, set original sentence and new sentence for language model check
+	if er != None:
+		er.set_original(" ".join([w['w'] for w in sent]))
+		er.set_newSent(getNewSent(sent, er.output, chunk))
+	return er
+
+def precheckCount(c_list, head, sent):
+	isPlural = getCount(head)
+	c_n = c_list[0]
+	nc_n = c_list[1]
+	sing_n = c_list[2]
+	plu_n = c_list[3]
+
+	er = None
+
+	start = sent[head.index]['b']
+	end = sent[head.index]['e']
+	if isPlural == 'Y':
+		if c_n == 'N' and nc_n == 'Y':
+			er = Error(start, end, head.lemma, 'change plural to singular', 'COUNT_UNCOUNTABLE_IN_COUNTABLE')
+		elif plu_n == 'N' and sing_n == 'Y':
+			er = Error(start, end, head.lemma, 'change plural to singular', 'COUNT_SINGULAR_IN_PLURAL')
+		else: pass
+	else:
+		if sing_n == 'N' and plu_n == 'Y':
+			er == Error(start, end , singularize(head.lemma), 'change singular to plural', 'COUNT_PLURAL_IN_SINGULAR')
+		else: pass
+
+	if er != None:
+		er.set_original(" ".join([w['w'] for w in sent]))
+
+		er.set_newSent(getNew2Sent(sent, er.output, head))
+	return er
+
+def getNew2Sent(sent, output, head):
+	words = map(lambda w:w['w'], sent)
+	words[head.index] = output
+	return " ".join(words)
