@@ -1,1 +1,2 @@
 # patternServer
+count and article
