@@ -1,8 +1,11 @@
 from nltk.corpus import cmudict
-from pattern.en import parse, parsetree, wordnet, NOUN
+from pattern.en import parse, parsetree, wordnet, NOUN, singularize, pluralize
 import utils
 
+#get count features and errors
 def getCountsFeatures(parsedSents, sentences):
+	errors = []
+	features = []
 	for i in range(len(parsedSents)):
 		if parsedSents[i] == None:
 			continue
@@ -14,15 +17,63 @@ def getCountsFeatures(parsedSents, sentences):
 				if chunk.head.type == 'PRP' or head == None:
 					continue #ignore PRP and None
 				#get celex features
+				isPlural = utils.getCount(head)
 				c_list = utils.getCelex(head)
-				print c_list
 				if c_list == None:
 					continue
 				#apply some precheck rules
 				error = utils.precheckCount(c_list, head, sent)
 				if error != None:
-					print error.newSent. error.original
+					e = dict()
+					e['start'] = error.start
+					e['end'] = error.end
+					e['output'] = error.output
+					e['desc'] = error.description
+					e['original'] = error.original
+					e['newSent'] = error.newSent
+					errors.append(e)
+					continue
 
+				#for the rest of the NP nouns, extract features for  classifier
+				article = utils.getOriginalArticle(chunk)
+				bef_word, bef_pos, aft_word, aft_pos = utils.getNNFeatures(s, head)
+				adj, adj_grade, pdt, prp, relation = utils.getChunkFeatures(chunk)
+				wordnet = utils.getWordNet(head)
+				output = ''
+				if isPlural == 'P':
+					output = singularize(head.lemma)
+				else:
+					output = pluralize(head.lemma)
+				
+				#features
+				feature = []
+				feature.append(isPlural)
+				feature.append(article)
+				feature.append(head.lemma)
+				feature.append(wordnet)
+				feature.append(adj)
+				feature.append(adj_grade)
+				feature.append(pdt)
+				feature.append(prp)
+				feature.append(relation)
+				feature.extend(c_list)
+				feature.extend(bef_word)
+				feature.extend(bef_pos)
+				feature.extend(aft_word)
+				feature.extend(aft_pos)
+
+				#index of NP chunk, head and article
+				index = []
+				index.append(i)
+				index.append(head.index)
+				r = dict()
+				r["feature"] = feature
+				r["index"] = index
+				r["output"] = output
+				features.append(r)
+	return errors, features
+
+#get article features and errors
 def getArticleFeatures(parsedSents, sentences):
 	errors = []
 	features = []
@@ -35,6 +86,9 @@ def getArticleFeatures(parsedSents, sentences):
 		sHeads = set()
 		for chunk in s.chunks:
 			if chunk.type == 'NP':
+				#filter NP chunk size bigger than 4
+				if len(chunk.words) > 4:
+					continue
 				head = utils.getHeadFeatures(chunk)
 				if chunk.head.type == 'PRP' or head == None:
 					continue #ignore PRP and None

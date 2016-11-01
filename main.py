@@ -3,15 +3,16 @@ import sys
 import json
 from flask import Flask, request, jsonify
 from flask_json import FlaskJSON, JsonError, json_response, as_json
-import redis
+#import redis
 import features
 
 app = Flask(__name__)
 FlaskJSON(app)
 
-pool = redis.ConnectionPool(host='0.0.0.0', port=6379)
-sentCache = redis.Redis(connection_pool=pool)
+#pool = redis.ConnectionPool(host='0.0.0.0', port=6379)
+#sentCache = redis.Redis(connection_pool=pool)
 
+'''
 #parse sentence with pattern, get parsed sentences in cache if not None
 def parseSentence(data):
 	data = json.dumps(data, indent=4)
@@ -29,8 +30,26 @@ def parseSentence(data):
 				s = s[0]
 				if s.stop != len(sent):
 					s = None
-			sentCache.set(text, repr(s), ex=3)
+			sentCache.set(text, repr(s), ex=300)
 			parsedSents.append(s)
+	return parsedSents, sentences
+'''
+
+#parse sentence with pattern, get parsed sentences in cache if not None
+def parseSentence(data):
+	data = json.dumps(data, indent=4)
+	sentences = json.loads(data)
+	parsedSents = []
+	for sent in sentences:
+		text = ' '.join(w['w'] for w in sent)
+		s = parsetree(text, relations=True, lemmata=True)
+		if len(s) != 1:
+			s = None
+		else:
+			s = s[0]
+			if s.stop != len(sent):
+				s = None
+		parsedSents.append(s)
 	return parsedSents, sentences
 
 @app.route("/counts", methods=['POST'])
@@ -40,9 +59,9 @@ def getCounts():
 	try:
 		value = data['text']
 		pss, ss = parseSentence(value)
-		features.getCountsFeatures(pss, ss)
-		#result['errors'] = errors
-		#result['features'] = fs
+		errors, fs = features.getCountsFeatures(pss, ss)
+		result['errors'] = errors
+		result['features'] = fs
 	except(KeyError, TypeError, ValueError):
 		raise JsonError(description='Invalid value.')
 	return jsonify(result)

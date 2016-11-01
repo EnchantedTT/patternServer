@@ -98,16 +98,6 @@ def getArticle(chunk):
 		s_article = 'O'
 	return article, s_article
 
-#get new sentence after precheck article
-def getNewSent(sent, output, chunk):
-	c_start = chunk.start
-	c_end = chunk.stop
-	s = map(lambda w:w['w'], sent)
-	s[c_start] = output.strip()
-	for i in s[(c_start+1):c_end]:
-		s.remove(i)
-	return " ".join([w for w in s])
-
 #get 3 pos before and after NP head
 def getAround(index, sentence, article):
 	b = ['NA', 'NA', 'NA']
@@ -254,7 +244,6 @@ def precheckArticle(article, sent, head, chunk):
 
 	start = sent[index]['b']
 	end = sent[head.index]['e']
-
 	er = None
 	if first_letter not in AEIOU and an == 'an':
 		if head.type.startswith('NNS'):
@@ -284,6 +273,16 @@ def precheckArticle(article, sent, head, chunk):
 		er.set_newSent(getNewSent(sent, er.output, chunk))
 	return er
 
+#get new sentence after precheck article
+def getNewSent(sent, output, chunk):
+	c_start = chunk.start
+	c_end = chunk.stop
+	s = map(lambda w:w['w'], sent)
+	s[c_start] = output.strip()
+	for i in s[(c_start+1):c_end]:
+		s.remove(i)
+	return " ".join([w for w in s])
+
 def precheckCount(c_list, head, sent):
 	isPlural = getCount(head)
 	c_n = c_list[0]
@@ -295,7 +294,8 @@ def precheckCount(c_list, head, sent):
 
 	start = sent[head.index]['b']
 	end = sent[head.index]['e']
-	if isPlural == 'Y':
+
+	if isPlural == 'P':
 		if c_n == 'N' and nc_n == 'Y':
 			er = Error(start, end, head.lemma, 'change plural to singular', 'COUNT_UNCOUNTABLE_IN_COUNTABLE')
 		elif plu_n == 'N' and sing_n == 'Y':
@@ -308,7 +308,6 @@ def precheckCount(c_list, head, sent):
 
 	if er != None:
 		er.set_original(" ".join([w['w'] for w in sent]))
-
 		er.set_newSent(getNew2Sent(sent, er.output, head))
 	return er
 
@@ -316,3 +315,31 @@ def getNew2Sent(sent, output, head):
 	words = map(lambda w:w['w'], sent)
 	words[head.index] = output
 	return " ".join(words)
+
+def getNNFeatures(sentence, noun):
+	index = noun.index
+	b = ['NA', 'NA', 'NA', 'NA']
+	a = ['NA', 'NA', 'NA', 'NA']
+	words = sentence.words
+	for i in range(4):
+		if index + 1 + i > len(words) - 1:
+			a[i] = ['NA','NA']
+		else:
+			a[i] = [words[index + 1 + i].string, words[index + 1 + i].type]
+		if index - i - 1 < 0:
+			b[i] = ['NA','NA']
+		else:
+			b[i] = [words[index - 1 - i].string, words[index - 1 - i].type]
+
+	bef_word = map(lambda x:x[0], b)
+	bef_pos = map(lambda x:x[1], b)
+	aft_word = map(lambda x:x[0], a)
+	aft_pos = map(lambda x:x[1], a)
+	return bef_word, bef_pos, aft_word, aft_pos
+
+def getOriginalArticle(chunk):
+	article = filter(lambda word:word.type == 'DT', chunk.words)
+	if len(article) != 1:
+		return 'NA'
+	else:
+		return article[0].string.lower()
