@@ -29,6 +29,7 @@ def getCountsFeatures(parsedSents, sentences):
 					e['end'] = error.end
 					e['output'] = error.output
 					e['desc'] = error.description
+					e['type'] = error.type_
 					e['original'] = error.original
 					e['newSent'] = error.newSent
 					errors.append(e)
@@ -106,6 +107,7 @@ def getArticleFeatures(parsedSents, sentences):
 					e['end'] = error.end
 					e['output'] = error.output
 					e['desc'] = error.description
+					e['type'] = error.type_
 					e['original'] = error.original
 					e['newSent'] = error.newSent
 					errors.append(e)
