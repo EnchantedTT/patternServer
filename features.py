@@ -14,7 +14,7 @@ def getCountsFeatures(parsedSents, sentences):
 		for chunk in s.chunks:
 			if chunk.type == 'NP':
 				head = utils.getHeadFeatures(chunk)
-				if chunk.head.type == 'PRP' or head == None:
+				if head == None or head.type == 'PRP':
 					continue #ignore PRP and None
 				#get celex features
 				isPlural = utils.getCount(head)
@@ -91,7 +91,7 @@ def getArticleFeatures(parsedSents, sentences):
 				if len(chunk.words) > 4:
 					continue
 				head = utils.getHeadFeatures(chunk)
-				if chunk.head.type == 'PRP' or head == None:
+				if head == None or head.type == 'PRP':
 					continue #ignore PRP and None
 
 				#get NP article
@@ -100,7 +100,11 @@ def getArticleFeatures(parsedSents, sentences):
 					continue #ignore DT which is not a, an or the
 
 				#precheck a/an singular and plural of this NP
-				error = utils.precheckArticle(article, sent, head, chunk)
+				c_list = utils.getCountable(head)
+				isUncount = False
+				if c_list[0] == 'N' and c_list[1] == 'Y':
+					isUncount = True
+				error = utils.precheckArticle(article, sent, head, chunk, isUncount)
 				if error != None:
 					e = dict()
 					e['start'] = error.start
@@ -117,7 +121,6 @@ def getArticleFeatures(parsedSents, sentences):
 				bef3pos, aft3pos = utils.getAround(head.index, s, article)
 				bnp_word, bnp_pos = utils.getBeforeNP(chunk, s)
 				anp_word, anp_pos = utils.getAfterNP(chunk, s)
-				c_list = utils.getCountable(head)
 				wordnet = utils.getWordNet(head)
 				isPlural = utils.getCount(head)
 				pp, pps = utils.prepModify(chunk)

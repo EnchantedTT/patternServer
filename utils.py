@@ -142,7 +142,11 @@ def getAfterNP(chunk, sent):
 
 #get wordnet of NP head noun
 def getWordNet(head):
-	s = wordnet.synsets(head.string.lower())
+	s = []
+	try:
+		s = wordnet.synsets(head.lemma)
+	except Exception, e:
+		s = []
 	if len(s) > 0:
 		a = s[0].lexname
 		if a == None:
@@ -223,13 +227,13 @@ def isVowel(chunk, article):
 		return 0
 
 #precheck some errors
-def precheckArticle(article, sent, head, chunk):
+def precheckArticle(article, sent, head, chunk, isUncount):
 	if article == None:
 		return None
 	an = article.string.lower()
 	if an != 'an' and an != 'a':
 		return None
-	if head.type.startswith('NNP') or chunk.string.lower().find('few') != -1 or chunk.string.lower().find('many') != -1:
+	if head.type.startswith('NNP'): #or chunk.string.lower().find('few') != -1 or chunk.string.lower().find('many') != -1:
 		return None
 	index = article.index
 	if index > len(sent) - 2: #make sure DT is not the last token in this sentence
@@ -245,27 +249,35 @@ def precheckArticle(article, sent, head, chunk):
 	start = sent[index]['b']
 	end = sent[head.index]['e']
 	er = None
-	if first_letter not in AEIOU and an == 'an':
-		if head.type.startswith('NNS'):
-			output = ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
-			er = Error(start, end, output, 'remove \"an\" or change \"an\" to \"the\"', 'ARTICLE_AN_FOR_PLURAL')
-		else:
-			output = 'a ' + ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
-			er = Error(start, end, output, 'chang \"an\" to \"a\"', 'ARTICLE_AN_ERROR')
-	elif first_letter in AEIOU and an == 'a':
-		if head.type.startswith('NNS'):
-			output = ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
-			er = Error(start, end, output, 'remove \"a\" or change \"a\" to \"the\"', 'ARTICLE_A_FOR_PLURAL')
-		else:
-			output = 'an' + ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
-			er = Error(start, end, output, 'chang \"a\" to \"an\"', 'ARTICLE_A_ERROR')
-	elif head.type.startswith('NNS'):
-		output = ' '.join([w['w'] for w in sent[(index):(head.index)]]) + ' ' + head.lemma
+	if isUncount:
 		if an == 'an':
-			er = Error(start, end, output, 'chang plural to singular or remove \"an\"', 'ARTICLE_AN_FOR_PLURAL')
+			output = ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
+			er = Error(start, end, output, 'remove \"an\"', 'ARTICLE_AN_FOR_UNCOUNTABLE')
 		else:
-			er = Error(start, end, output, 'chang plural to singular or remove \"a\"', 'ARTICLE_A_FOR_PLURAL')
-	else: er = None
+			output = ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
+			er = Error(start, end, output, 'remove \"a\"', 'ARTICLE_A_FOR_UNCOUNTABLE')
+	else:
+		if first_letter not in AEIOU and an == 'an':
+			if head.type.startswith('NNS'):
+				output = ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
+				er = Error(start, end, output, 'remove \"an\" or change \"an\" to \"the\"', 'ARTICLE_AN_FOR_PLURAL')
+			else:
+				output = 'a ' + ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
+				er = Error(start, end, output, 'chang \"an\" to \"a\"', 'ARTICLE_AN_FOR_NOT_VOWEL')
+		elif first_letter in AEIOU and an == 'a':
+			if head.type.startswith('NNS'):
+				output = ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
+				er = Error(start, end, output, 'remove \"a\" or change \"a\" to \"the\"', 'ARTICLE_A_FOR_PLURAL')
+			else:
+				output = 'an ' + ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
+				er = Error(start, end, output, 'chang \"a\" to \"an\"', 'ARTICLE_A_FOR_VOWEL')
+		elif head.type.startswith('NNS'):
+			output = ' '.join([w['w'] for w in sent[(index):(head.index)]]) + ' ' + head.lemma
+			if an == 'an':
+				er = Error(start, end, output, 'chang plural to singular or remove \"an\"', 'ARTICLE_AN_FOR_PLURAL')
+			else:
+				er = Error(start, end, output, 'chang plural to singular or remove \"a\"', 'ARTICLE_A_FOR_PLURAL')
+		else: er = None
 
 	#if not None, set original sentence and new sentence for language model check
 	if er != None:
@@ -297,13 +309,13 @@ def precheckCount(c_list, head, sent):
 
 	if isPlural == 'P':
 		if c_n == 'N' and nc_n == 'Y':
-			er = Error(start, end, head.lemma, 'change plural to singular', 'COUNT_UNCOUNTABLE_IN_COUNTABLE')
+			er = Error(start, end, head.lemma, 'change plural to singular', 'COUNTABLE_ERROR')
 		elif plu_n == 'N' and sing_n == 'Y':
-			er = Error(start, end, head.lemma, 'change plural to singular', 'COUNT_SINGULAR_IN_PLURAL')
+			er = Error(start, end, head.lemma, 'change plural to singular', 'PLURAL_ERROR')
 		else: pass
 	else:
 		if sing_n == 'N' and plu_n == 'Y':
-			er == Error(start, end , singularize(head.lemma), 'change singular to plural', 'COUNT_PLURAL_IN_SINGULAR')
+			er == Error(start, end , singularize(head.lemma), 'change singular to plural', 'SINGULAR_ERROR')
 		else: pass
 
 	if er != None:
