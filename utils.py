@@ -308,14 +308,18 @@ def precheckCount(c_list, head, sent):
 	end = sent[head.index]['e']
 
 	if isPlural == 'P':
+		output = head.lemma
 		if c_n == 'N' and nc_n == 'Y':
-			er = Error(start, end, head.lemma, 'change plural to singular', 'COUNTABLE_ERROR')
+			desc = "change \"" + sent[head.index]['w'] + "\" to \"" + output + "\""
+			er = Error(start, end, output, desc, 'COUNTABLE_ERROR')
 		elif plu_n == 'N' and sing_n == 'Y':
-			er = Error(start, end, head.lemma, 'change plural to singular', 'PLURAL_ERROR')
+			er = Error(start, end, output, desc, 'PLURAL_ERROR')
 		else: pass
 	else:
+		output = pluralize(head.lemma)
 		if sing_n == 'N' and plu_n == 'Y':
-			er == Error(start, end , singularize(head.lemma), 'change singular to plural', 'SINGULAR_ERROR')
+			desc = "change \"" + sent[head.index]['w'] + "\" to \"" + output + "\""
+			er == Error(start, end , output, desc, 'SINGULAR_ERROR')
 		else: pass
 
 	if er != None:
