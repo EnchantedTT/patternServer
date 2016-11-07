@@ -313,6 +313,7 @@ def precheckCount(c_list, head, sent):
 			desc = "change \"" + sent[head.index]['w'] + "\" to \"" + output + "\""
 			er = Error(start, end, output, desc, 'COUNTABLE_ERROR')
 		elif plu_n == 'N' and sing_n == 'Y':
+			desc = "change \"" + sent[head.index]['w'] + "\" to \"" + output + "\""
 			er = Error(start, end, output, desc, 'PLURAL_ERROR')
 		else: pass
 	else:
