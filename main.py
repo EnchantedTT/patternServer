@@ -3,16 +3,16 @@ import sys
 import json
 from flask import Flask, request, jsonify
 from flask_json import FlaskJSON, JsonError, json_response, as_json
-#import redis
+import redis
 import features
+import pickle
 
 app = Flask(__name__)
 FlaskJSON(app)
 
-#pool = redis.ConnectionPool(host='0.0.0.0', port=6379)
-#sentCache = redis.Redis(connection_pool=pool)
+pool = redis.ConnectionPool(host='127.0.0.1', port=6379)
+sentCache = redis.Redis(connection_pool=pool)
 
-'''
 #parse sentence with pattern, get parsed sentences in cache if not None
 def parseSentence(data):
 	data = json.dumps(data, indent=4)
@@ -20,8 +20,10 @@ def parseSentence(data):
 	parsedSents = []
 	for sent in sentences:
 		text = ' '.join(w['w'] for w in sent)
-		if sentCache.get(text):
-			parsedSents.append(Sentence(sentCache.get(text)))
+		cache_key = 'PATTERN' + '_'.join(w['w'] for w in sent)
+		if sentCache.get(cache_key):
+			#print "cache!"
+			parsedSents.append(pickle.loads(sentCache.get(cache_key)))
 		else:
 			s = parsetree(text, relations=True, lemmata=True)
 			if len(s) != 1:
@@ -30,11 +32,10 @@ def parseSentence(data):
 				s = s[0]
 				if s.stop != len(sent):
 					s = None
-			sentCache.set(text, repr(s), ex=300)
+			sentCache.set(cache_key, pickle.dumps(s), ex=180)
 			parsedSents.append(s)
 	return parsedSents, sentences
 '''
-
 #parse sentence with pattern, get parsed sentences in cache if not None
 def parseSentence(data):
 	data = json.dumps(data, indent=4)
@@ -51,6 +52,7 @@ def parseSentence(data):
 				s = None
 		parsedSents.append(s)
 	return parsedSents, sentences
+'''
 
 @app.route("/counts", methods=['POST'])
 def getCounts():
@@ -81,4 +83,4 @@ def getArticle():
 	return jsonify(result)
 
 if __name__ == "__main__":
-	app.run(host='0.0.0.0', port=5012)
+	app.run(host='0.0.0.0', port=5011, threaded=True)

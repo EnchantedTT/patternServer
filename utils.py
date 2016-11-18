@@ -247,52 +247,50 @@ def precheckArticle(article, sent, head, chunk, isUncount):
 	else: return None
 
 	start = sent[index]['b']
-	end = sent[head.index]['e']
+	end = sent[index]['e']
 	er = None
 	if isUncount:
+		output = ''
 		if an == 'an':
-			output = ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
 			er = Error(start, end, output, 'remove \"an\"', 'ARTICLE_AN_FOR_UNCOUNTABLE')
 		else:
-			output = ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
 			er = Error(start, end, output, 'remove \"a\"', 'ARTICLE_A_FOR_UNCOUNTABLE')
 	else:
 		if first_letter not in AEIOU and an == 'an':
 			if head.type.startswith('NNS'):
-				output = ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
+				output = ''
 				er = Error(start, end, output, 'remove \"an\" or change \"an\" to \"the\"', 'ARTICLE_AN_FOR_PLURAL')
 			else:
-				output = 'a ' + ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
-				er = Error(start, end, output, 'chang \"an\" to \"a\"', 'ARTICLE_AN_FOR_NOT_VOWEL')
+				output = 'a'
+				er = Error(start, end, output, 'change \"an\" to \"a\"', 'ARTICLE_AN_FOR_NOT_VOWEL')
 		elif first_letter in AEIOU and an == 'a':
 			if head.type.startswith('NNS'):
-				output = ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
+				output = ''
 				er = Error(start, end, output, 'remove \"a\" or change \"a\" to \"the\"', 'ARTICLE_A_FOR_PLURAL')
 			else:
-				output = 'an ' + ' '.join([w['w'] for w in sent[(index + 1):(head.index + 1)]])
-				er = Error(start, end, output, 'chang \"a\" to \"an\"', 'ARTICLE_A_FOR_VOWEL')
+				output = 'an'
+				er = Error(start, end, output, 'change \"a\" to \"an\"', 'ARTICLE_A_FOR_VOWEL')
 		elif head.type.startswith('NNS'):
-			output = ' '.join([w['w'] for w in sent[(index):(head.index)]]) + ' ' + head.lemma
+			output = ''
 			if an == 'an':
-				er = Error(start, end, output, 'chang plural to singular or remove \"an\"', 'ARTICLE_AN_FOR_PLURAL')
+				er = Error(start, end, output, 'remove \"an\"', 'ARTICLE_AN_FOR_PLURAL')
 			else:
-				er = Error(start, end, output, 'chang plural to singular or remove \"a\"', 'ARTICLE_A_FOR_PLURAL')
+				er = Error(start, end, output, 'remove \"a\"', 'ARTICLE_A_FOR_PLURAL')
 		else: er = None
 
 	#if not None, set original sentence and new sentence for language model check
 	if er != None:
 		er.set_original(" ".join([w['w'] for w in sent]))
-		er.set_newSent(getNewSent(sent, er.output, chunk))
+		er.set_newSent(getNewSent(sent, er.output, index))
 	return er
 
 #get new sentence after precheck article
-def getNewSent(sent, output, chunk):
-	c_start = chunk.start
-	c_end = chunk.stop
+def getNewSent(sent, output, index):
 	s = map(lambda w:w['w'], sent)
-	s[c_start] = output.strip()
-	for i in s[(c_start+1):c_end]:
-		s.remove(i)
+	if output == '':
+		del s[index]
+	else:
+		s[index] = output
 	return " ".join([w for w in s])
 
 def precheckCount(c_list, head, sent):
