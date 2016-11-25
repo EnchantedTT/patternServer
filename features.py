@@ -1,7 +1,10 @@
 from nltk.corpus import cmudict
 from pattern.en import parse, parsetree, wordnet, NOUN, singularize, pluralize
 import utils
+import settings
+import logging
 
+LOGGER = logging.getLogger("pattern.server")
 #get count features and errors
 def getCountsFeatures(parsedSents, sentences):
 	errors = []

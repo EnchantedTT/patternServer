@@ -1,6 +1,11 @@
 from nltk.corpus import cmudict
 from pattern.en import parse, parsetree, wordnet, NOUN, pluralize
 from BasicModels import Error
+import os
+import settings
+import logging
+
+LOGGER = logging.getLogger("pattern.server")
 
 PRON = cmudict.dict()
 AEIOU = ['A', 'E', 'I', 'O', 'U']
@@ -41,7 +46,8 @@ Features of noun from CELEX
 9.   Proper_N 	is this lemma used as a proper noun?
 10.  Exp_N 		is this noun lemma only ever used in combination with certain other words to make up a particular phrase?
 '''
-NOUNLIST = "static/NounMap.list"
+OSPATH = os.path.dirname(os.path.abspath(__file__))
+NOUNLIST = OSPATH + "/static/NounMap.list"
 maps = readNounList(NOUNLIST)
 NER_VALUE = ['N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'Y', 'N']
 NA_VALUE = ['N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N']
